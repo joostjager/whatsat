@@ -1,90 +1,48 @@
-## Lightning Network Daemon
+## Lightning Network Daemon - special WHATSAT edition
 
-[![Build Status](https://img.shields.io/travis/lightningnetwork/lnd.svg)](https://travis-ci.org/lightningnetwork/lnd)
-[![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/lightningnetwork/lnd/blob/master/LICENSE)
-[![Irc](https://img.shields.io/badge/chat-on%20freenode-brightgreen.svg)](https://webchat.freenode.net/?channels=lnd)
-[![Godoc](https://godoc.org/github.com/lightningnetwork/lnd?status.svg)](https://godoc.org/github.com/lightningnetwork/lnd)
+This repo is a fork of [`lnd`](https://github.com/lightningnetwork/lnd) that demonstrates how the Lightning Network
+can be used as an end-to-end encrypted, onion-routed, censorship-resistant, peer-to-peer chat messages protocol.
 
-<img src="logo.png">
+<img src="whatsat.gif" alt="screencast" width="880" />
 
-The Lightning Network Daemon (`lnd`) - is a complete implementation of a
-[Lightning Network](https://lightning.network) node.  `lnd` has several pluggable back-end
-chain services including [`btcd`](https://github.com/btcsuite/btcd) (a
-full-node), [`bitcoind`](https://github.com/bitcoin/bitcoin), and
-[`neutrino`](https://github.com/lightninglabs/neutrino) (a new experimental light client). The project's codebase uses the
-[btcsuite](https://github.com/btcsuite/) set of Bitcoin libraries, and also
-exports a large set of isolated re-usable Lightning Network related libraries
-within it.  In the current state `lnd` is capable of:
-* Creating channels.
-* Closing channels.
-* Completely managing all channel states (including the exceptional ones!).
-* Maintaining a fully authenticated+validated channel graph.
-* Performing path finding within the network, passively forwarding incoming payments.
-* Sending outgoing [onion-encrypted payments](https://github.com/lightningnetwork/lightning-onion)
-through the network.
-* Updating advertised fee schedules.
-* Automatic channel management ([`autopilot`](https://github.com/lightningnetwork/lnd/tree/master/autopilot)).
+Recent [changes to the protocol](https://github.com/lightningnetwork/lightning-rfc/pull/619) made it easier then before to attach arbitrary data to a payment. This demo leverages that by attaching a text message and a sender signature.
 
-## Lightning Network Specification Compliance
-`lnd` _fully_ conforms to the [Lightning Network specification
-(BOLTs)](https://github.com/lightningnetwork/lightning-rfc). BOLT stands for:
-Basis of Lightning Technology. The specifications are currently being drafted
-by several groups of implementers based around the world including the
-developers of `lnd`. The set of specification documents as well as our
-implementation of the specification are still a work-in-progress. With that
-said, the current status of `lnd`'s BOLT compliance is:
+Ideally users would send each other 0 sat payments and only drop off fees along the way. But that is currently not supported in the protocol. Also, there are minimum htlc amount constraints on channels. As a workaround, in anticipation of a true micropayment network, some money is paid to the recipient of the message. In this demo, it is 1000 msat by default (can be configured through a command line flag). Both parties keeping a running balance of what they owe the other and send that back with the next message.
 
-  - [X] BOLT 1: Base Protocol
-  - [X] BOLT 2: Peer Protocol for Channel Management
-  - [X] BOLT 3: Bitcoin Transaction and Script Formats
-  - [X] BOLT 4: Onion Routing Protocol
-  - [X] BOLT 5: Recommendations for On-chain Transaction Handling
-  - [X] BOLT 7: P2P Node and Channel Discovery
-  - [X] BOLT 8: Encrypted and Authenticated Transport
-  - [X] BOLT 9: Assigned Feature Flags
-  - [X] BOLT 10: DNS Bootstrap and Assisted Node Location
-  - [X] BOLT 11: Invoice Protocol for Lightning Payments
+It is currently also possible to chat over Lightning without paying anything at all. The receiver of the chat message can fail the payment after having extracted the message. In Lightning, there is no charge for failed payments. This is generally considered an unintended use of the network and it may not be possible anymore in the future to leverage failure messages like that. See the [lightning-dev mailing list](https://lists.linuxfoundation.org/pipermail/lightning-dev/2019-November/002275.html). To use Whatsat in 'free' mode, run it with the `--free` command line flag.
 
-## Developer Resources
+## Usage
 
-The daemon has been designed to be as developer friendly as possible in order
-to facilitate application development on top of `lnd`. Two primary RPC
-interfaces are exported: an HTTP REST API, and a [gRPC](https://grpc.io/)
-service. The exported API's are not yet stable, so be warned: they may change
-drastically in the near future.
+* Set up a Lightning Node as usual and open a channel to a well-connected node. Also make sure you have inbound liquidity too, otherwise it won't be possible to receive messages. And use public channels, otherwise people won't be able to find routes to deliver messages to you. No support for routing hints yet.
 
-An automatically generated set of documentation for the RPC APIs can be found
-at [api.lightning.community](https://api.lightning.community). A set of developer
-resources including talks, articles, and example applications can be found at:
-[dev.lightning.community](https://dev.lightning.community).
+* Run `lncli chat <pubkey_or_alias>` to start chatting with your chosen destination.
 
-Finally, we also have an active
-[Slack](https://join.slack.com/t/lightningcommunity/shared_invite/enQtODI1NTUwOTgwNTMxLThkYjQ2ZTQ3YTYyNzE3ZTk2ODMxNDMzYzdkNjRlY2EwYzRjMjg2NmM5MDZmZmE5OTY1MDZhZmZiMTZlMmIzYWM) where protocol developers, application developers, testers and users gather to
-discuss various aspects of `lnd` and also Lightning in general.
+  The blue checkmarks serve as delivery notifications. The amounts in blue on the right are the routing fees paid for the delivery. This
+  does not include the amount paid to the recipient of the message, because it is assumed that that amount will be returned to us in the
+  next reply.
 
-## Installation
-  In order to build from source, please see [the installation
-  instructions](docs/INSTALL.md).
+  All chat messages end up in the same window. It is possible to switch to sending to a different destination by typing `/<pubkey_or_alias>` in the send box.
 
-## Docker
-  To run lnd from Docker, please see the main [Docker instructions](docs/DOCKER.md)
-  
-## IRC
-  * irc.freenode.net
-  * channel #lnd
-  * [webchat](https://webchat.freenode.net/?channels=lnd)
+## Tuning LND for chat traffic
 
-## Security
+There are several configuration parameters that can be changed to optimize `lnd` for chat traffic:
 
-The developers of `lnd` take security _very_ seriously. The disclosure of
-security vulnerabilities helps us secure the health of `lnd`, privacy of our
-users, and also the health of the Lightning Network as a whole.  If you find
-any issues regarding security or privacy, please disclose the information
-responsibly by sending an email to security at lightning dot engineering,
-preferably [encrypted using our designated PGP key
-(`91FE464CD75101DA6B6BAB60555C6465E5BCB3AF`) which can be found
-[here](https://gist.githubusercontent.com/Roasbeef/6fb5b52886183239e4aa558f83d085d3/raw/5ef96c426e3cf20a2443dc9d3c7d6877576da9ca/security@lightning.engineering).
+* `bitcoin.minhtlc=0`
 
-## Further reading
-* [Step-by-step send payment guide with docker](https://github.com/lightningnetwork/lnd/tree/master/docker)
-* [Contribution guide](https://github.com/lightningnetwork/lnd/blob/master/docs/code_contribution_guidelines.md)
+  When new channels are opened (or accepted), this parameter configures the minimum htlc size that you will ever be able to receive on that channel. This value cannot be changed after the channel is opened. Setting this to zero allows us to receive chat messages that pay us only 1 millisatoshi (a lot less than the default of 1000 msat).
+
+* `routerrpc.attemptcost=0`
+
+  Prevents us from paying more for a reliable route. The default for this is 100 sats per attempt. For very low value (chat) payments, this means that we are going to overpay a lot on fees (relative to the payment amount) for a reliable route. Click [here](https://twitter.com/joostjgr/status/1186177262238031872) more information on this topic.
+
+## Finding peers that are good for chatting
+
+For chat messages, the main peer selection criterium is the routing fee that you need to pay for the smallest possible payment amount. This fork adds a command to lncli to calculate that fee for all nodes on the ["bos list"](https://nodes.lightning.computer/availability/v1/btc.json). Run `lncli chatpeers` and check out the top of the list.
+
+## Notifications
+
+This fork of `lnd` includes phone push notifications through [simplepush.io](https://simplepush.io/). It delivers a notification any time a chat message comes in. To enable this functionality, set your api key through the `simplepushkey` configuration option.
+
+## Disclaimer
+
+This code only serves to demonstrate the concept and doesn't pass the required quality checks. Use with testnet sats only. If you really want to use it on mainnet, set up a dedicated node with a negligible amount of money on it and a few minimum sized channels.

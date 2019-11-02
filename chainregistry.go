@@ -36,7 +36,7 @@ import (
 )
 
 const (
-	defaultBitcoinMinHTLCMSat = lnwire.MilliSatoshi(1000)
+	defaultBitcoinMinHTLCMSat = lnwire.MilliSatoshi(0)
 
 	// DefaultBitcoinBaseFeeMSat is the default forwarding base fee.
 	DefaultBitcoinBaseFeeMSat = lnwire.MilliSatoshi(1000)

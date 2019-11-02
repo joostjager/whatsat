@@ -54,7 +54,7 @@ var (
 	// units of executing a payment attempt that fails. It is used to trade
 	// off potentially better routes against their probability of
 	// succeeding.
-	DefaultPaymentAttemptPenalty = lnwire.NewMSatFromSatoshis(100)
+	DefaultPaymentAttemptPenalty = lnwire.NewMSatFromSatoshis(0)
 
 	// DefaultMinRouteProbability is the default minimum probability for routes
 	// returned from findPath.
@@ -367,6 +367,9 @@ func getMaxOutgoingAmt(node route.Vertex, outgoingChan *uint64,
 func findPath(g *graphParams, r *RestrictParams, cfg *PathFindingConfig,
 	source, target route.Vertex, amt lnwire.MilliSatoshi) (
 	[]*channeldb.ChannelEdgePolicy, error) {
+
+	log.Debugf("Starting pathfinding: amt=%v, feelimit=%v",
+		amt, r.FeeLimit)
 
 	// Pathfinding can be a significant portion of the total payment
 	// latency, especially on low-powered devices. Log several metrics to

@@ -49,6 +49,8 @@ XARGS := xargs -L 1
 
 include make/testing_flags.mk
 
+DEFAULT_TAGS := routerrpc
+
 DEV_TAGS := $(if ${tags},$(DEV_TAGS) ${tags},$(DEV_TAGS))
 
 LINT = $(LINT_BIN) run -v
@@ -89,18 +91,18 @@ btcd:
 
 build:
 	@$(call print, "Building debug lnd and lncli.")
-	$(GOBUILD) -tags="$(DEV_TAGS)" -o lnd-debug $(LDFLAGS) $(PKG)/cmd/lnd
-	$(GOBUILD) -tags="$(DEV_TAGS)" -o lncli-debug $(LDFLAGS) $(PKG)/cmd/lncli
+	$(GOBUILD) -tags="$(DEV_TAGS) $(DEFAULT_TAGS)" -o lnd-debug $(LDFLAGS) $(PKG)/cmd/lnd
+	$(GOBUILD) -tags="$(DEV_TAGS) $(DEFAULT_TAGS)" -o lncli-debug $(LDFLAGS) $(PKG)/cmd/lncli
 
 build-itest:
 	@$(call print, "Building itest lnd and lncli.")
-	$(GOBUILD) -tags="$(ITEST_TAGS)" -o lnd-itest $(LDFLAGS) $(PKG)/cmd/lnd
-	$(GOBUILD) -tags="$(ITEST_TAGS)" -o lncli-itest $(LDFLAGS) $(PKG)/cmd/lncli
+	$(GOBUILD) -tags="$(ITEST_TAGS) $(DEFAULT_TAGS)" -o lnd-itest $(LDFLAGS) $(PKG)/cmd/lnd
+	$(GOBUILD) -tags="$(ITEST_TAGS) $(DEFAULT_TAGS)" -o lncli-itest $(LDFLAGS) $(PKG)/cmd/lncli
 
 install:
 	@$(call print, "Installing lnd and lncli.")
-	$(GOINSTALL) -tags="${tags}" $(LDFLAGS) $(PKG)/cmd/lnd
-	$(GOINSTALL) -tags="${tags}" $(LDFLAGS) $(PKG)/cmd/lncli
+	$(GOINSTALL) -tags="${tags} $(DEFAULT_TAGS)" $(LDFLAGS) $(PKG)/cmd/lnd
+	$(GOINSTALL) -tags="${tags} $(DEFAULT_TAGS)" $(LDFLAGS) $(PKG)/cmd/lncli
 
 scratch: build
 

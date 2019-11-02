@@ -103,19 +103,6 @@ func getClientConn(ctx *cli.Context, skipMacaroons bool) *grpc.ClientConn {
 		}
 
 		macConstraints := []macaroons.Constraint{
-			// We add a time-based constraint to prevent replay of the
-			// macaroon. It's good for 60 seconds by default to make up for
-			// any discrepancy between client and server clocks, but leaking
-			// the macaroon before it becomes invalid makes it possible for
-			// an attacker to reuse the macaroon. In addition, the validity
-			// time of the macaroon is extended by the time the server clock
-			// is behind the client clock, or shortened by the time the
-			// server clock is ahead of the client clock (or invalid
-			// altogether if, in the latter case, this time is more than 60
-			// seconds).
-			// TODO(aakselrod): add better anti-replay protection.
-			macaroons.TimeoutConstraint(ctx.GlobalInt64("macaroontimeout")),
-
 			// Lock macaroon down to a specific IP address.
 			macaroons.IPLockConstraint(ctx.GlobalString("macaroonip")),
 
@@ -299,6 +286,7 @@ func main() {
 		verifyChanBackupCommand,
 		restoreChanBackupCommand,
 		bakeMacaroonCommand,
+		trackPaymentCommand,
 	}
 
 	// Add any extra commands determined by build flags.
