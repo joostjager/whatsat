@@ -5,6 +5,12 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/lightningnetwork/lnd/htlcswitch/hop"
+
+	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/lightningnetwork/lnd/routing/route"
+
 	"github.com/davecgh/go-spew/spew"
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/lntypes"
@@ -28,6 +34,8 @@ var (
 	// errNoUpdate is returned when no invoice updated is required.
 	errNoUpdate = errors.New("no update needed")
 )
+
+var signedMsgPrefix = []byte("Lightning Signed Message:")
 
 // HodlEvent describes how an htlc should be resolved. If HodlEvent.Preimage is
 // set, the event indicates a settle event. If Preimage is nil, it is a cancel
@@ -415,6 +423,74 @@ func (i *InvoiceRegistry) LookupInvoice(rHash lntypes.Hash) (channeldb.Invoice,
 	return i.cdb.LookupInvoice(rHash)
 }
 
+type ChatMessage struct {
+	Text        string
+	Sender      route.Vertex
+	ReceivedAmt lnwire.MilliSatoshi
+}
+
+var ChatInbox = make(chan ChatMessage, 10000)
+
+func (i *InvoiceRegistry) processChat(hash lntypes.Hash,
+	chatMsg *hop.ChatMessage, amtPaid lnwire.MilliSatoshi) *lntypes.Preimage {
+
+	if chatMsg.Signature == nil {
+		log.Debugf("no sig on chat message")
+		return nil
+	}
+
+	prefixedMsg := append(signedMsgPrefix, chatMsg.Text...)
+	digest := chainhash.DoubleHashB(prefixedMsg)
+
+	// RecoverCompact both recovers the pubkey and validates the signature.
+	pubKey, _, err := btcec.RecoverCompact(btcec.S256(), chatMsg.Signature, digest)
+	if err != nil {
+		log.Debugf("invalid sig on chat message: %v", err)
+		return nil
+	}
+
+	sender, err := route.NewVertexFromBytes(pubKey.SerializeCompressed())
+	if err != nil {
+		log.Debugf("invalid sender on chat message: %v", err)
+		return nil
+	}
+
+	var preimage *lntypes.Preimage
+	if len(chatMsg.Preimage) > 0 {
+		pre, err := lntypes.MakePreimage(chatMsg.Preimage)
+		if err != nil {
+			log.Debugf("invalid preimage on chat message: %v", err)
+			return nil
+		}
+
+		if pre.Hash() != hash {
+			log.Debugf("mismatching preimage on chat message")
+			return nil
+		}
+
+		preimage = &pre
+	} else {
+		amtPaid = 0
+	}
+
+	processedChatMsg := ChatMessage{
+		Text:        string(chatMsg.Text),
+		Sender:      sender,
+		ReceivedAmt: amtPaid,
+	}
+
+	select {
+	case ChatInbox <- processedChatMsg:
+	default:
+		log.Errorf("Chat inbox full, message dropped")
+		return nil
+	}
+
+	log.Infof("Chat message received from %v", sender)
+
+	return preimage
+}
+
 // NotifyExitHopHtlc attempts to mark an invoice as settled. If the invoice is a
 // debug invoice, then this method is a noop as debug invoices are never fully
 // settled. The return value describes how the htlc should be resolved.
@@ -437,6 +513,17 @@ func (i *InvoiceRegistry) NotifyExitHopHtlc(rHash lntypes.Hash,
 	debugLog := func(s string) {
 		log.Debugf("Invoice(%x): %v, amt=%v, expiry=%v, circuit=%v",
 			rHash[:], s, amtPaid, expiry, circuitKey)
+	}
+
+	chatMsg := payload.ChatMessage()
+	if chatMsg != nil {
+		preimage := i.processChat(rHash, chatMsg, amtPaid)
+
+		return &HodlEvent{
+			CircuitKey:   circuitKey,
+			Preimage:     preimage,
+			AcceptHeight: currentHeight,
+		}, nil
 	}
 
 	// Default is to not update subscribers after the invoice update.

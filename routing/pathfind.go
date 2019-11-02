@@ -307,6 +307,9 @@ func findPath(g *graphParams, r *RestrictParams, cfg *PathFindingConfig,
 	source, target route.Vertex, amt lnwire.MilliSatoshi) (
 	[]*channeldb.ChannelEdgePolicy, error) {
 
+	log.Debugf("Starting pathfinding: amt=%v, feelimit=%v",
+		amt, r.FeeLimit)
+
 	// Pathfinding can be a significant portion of the total payment
 	// latency, especially on low-powered devices. Log several metrics to
 	// aid in the analysis performance problems in this area.

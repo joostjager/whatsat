@@ -52,6 +52,10 @@ func (v PayloadViolation) String() string {
 	}
 }
 
+type ChatMessage struct {
+	Text, Signature, Preimage []byte
+}
+
 // ErrInvalidPayload is an error returned when a parsed onion payload either
 // included or omitted incorrect records for a particular hop type.
 type ErrInvalidPayload struct {
@@ -91,6 +95,8 @@ type Payload struct {
 	// MPP holds the info provided in an option_mpp record when parsed from
 	// a TLV onion payload.
 	MPP *record.MPP
+
+	Chat *ChatMessage
 }
 
 // NewLegacyPayload builds a Payload from the amount, cltv, and next hop
@@ -118,11 +124,17 @@ func NewPayloadFromReader(r io.Reader) (*Payload, error) {
 		mpp  = &record.MPP{}
 	)
 
+	var msg, msgSig, msgPreimage []byte
+	msgRecord := tlv.MakePrimitiveRecord(34349334, &msg)
+	msgSigRecord := tlv.MakePrimitiveRecord(34349336, &msgSig)
+	msgPreimageRecord := tlv.MakePrimitiveRecord(34349337, &msgPreimage)
+
 	tlvStream, err := tlv.NewStream(
 		record.NewAmtToFwdRecord(&amt),
 		record.NewLockTimeRecord(&cltv),
 		record.NewNextHopIDRecord(&cid),
 		mpp.Record(),
+		msgRecord, msgSigRecord, msgPreimageRecord,
 	)
 	if err != nil {
 		return nil, err
@@ -131,6 +143,15 @@ func NewPayloadFromReader(r io.Reader) (*Payload, error) {
 	parsedTypes, err := tlvStream.DecodeWithParsedTypes(r)
 	if err != nil {
 		return nil, err
+	}
+
+	var chatMsg *ChatMessage
+	if msg != nil {
+		chatMsg = &ChatMessage{
+			Preimage:  msgPreimage,
+			Signature: msgSig,
+			Text:      msg,
+		}
 	}
 
 	// Validate whether the sender properly included or omitted tlv records
@@ -164,7 +185,8 @@ func NewPayloadFromReader(r io.Reader) (*Payload, error) {
 			AmountToForward: lnwire.MilliSatoshi(amt),
 			OutgoingCTLV:    cltv,
 		},
-		MPP: mpp,
+		MPP:  mpp,
+		Chat: chatMsg,
 	}, nil
 }
 
@@ -264,4 +286,8 @@ func getMinRequiredViolation(set tlv.TypeSet) *tlv.Type {
 	}
 
 	return nil
+}
+
+func (h *Payload) ChatMessage() *ChatMessage {
+	return h.Chat
 }

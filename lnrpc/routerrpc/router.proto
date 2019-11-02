@@ -103,6 +103,10 @@ message SendPaymentRequest {
 
     /// If set, circular payments to self are permitted.
     bool allow_self_payment = 15;
+    
+    string chat_message = 999;
+
+    bool chat_free = 998;
 }
 
 message TrackPaymentRequest {
@@ -473,6 +477,17 @@ message BuildRouteResponse {
     lnrpc.Route route = 1;
 }
 
+message ReceiveChatMessagesRequest {
+}
+
+message ChatMessage {
+    string text = 1;
+
+    bytes sender_pubkey = 2;
+
+    int64 amt_received_msat = 3;
+}
+
 service Router {
     /**
     SendPayment attempts to route a payment described by the passed
@@ -525,4 +540,6 @@ service Router {
     calculate the correct fees and time locks.
     */
     rpc BuildRoute(BuildRouteRequest) returns (BuildRouteResponse);
+
+    rpc ReceiveChatMessages(ReceiveChatMessagesRequest) returns (stream ChatMessage);
 }

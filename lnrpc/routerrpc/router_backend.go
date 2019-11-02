@@ -2,11 +2,14 @@ package routerrpc
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	math "math"
 	"time"
+
+	"github.com/lightningnetwork/lnd/netann"
 
 	"github.com/btcsuite/btcd/btcec"
 
@@ -63,6 +66,8 @@ type RouterBackend struct {
 	// MaxTotalTimelock is the maximum total time lock a route is allowed to
 	// have.
 	MaxTotalTimelock uint32
+
+	NodeSigner *netann.NodeSigner
 }
 
 // MissionControl defines the mission control dependencies of routerrpc.
@@ -485,6 +490,8 @@ func (r *RouterBackend) UnmarshallRoute(rpcroute *lnrpc.Route) (
 	return route, nil
 }
 
+var signedMsgPrefix = []byte("Lightning Signed Message:")
+
 // extractIntentFromSendRequest attempts to parse the SendRequest details
 // required to dispatch a client from the information presented by an RPC
 // client.
@@ -531,7 +538,43 @@ func (r *RouterBackend) extractIntentFromSendRequest(
 		return nil, errors.New("timeout_seconds must be specified")
 	}
 
-	var destTLV map[uint64][]byte
+	// Unmarshall either sat or msat amount from request.
+	reqAmt, err := lnrpc.UnmarshallAmt(
+		rpcPayReq.Amt, rpcPayReq.AmtMsat,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	destTLV := make(map[uint64][]byte)
+
+	msg := rpcPayReq.ChatMessage
+	if msg != "" {
+		prefixedMsg := append(signedMsgPrefix, msg...)
+		sigBytes, err := r.NodeSigner.SignCompact(prefixedMsg)
+		if err != nil {
+			return nil, err
+		}
+
+		var preimage lntypes.Preimage
+		if _, err := rand.Read(preimage[:]); err != nil {
+			return nil, err
+		}
+		hash := preimage.Hash()
+		rpcPayReq.PaymentHash = hash[:]
+
+		destTLV[34349334] = []byte(msg)
+		destTLV[34349336] = sigBytes
+
+		// Only include preimage if not chatting for free.
+		if !rpcPayReq.ChatFree {
+			destTLV[34349337] = preimage[:]
+		}
+
+		log.Infof("Sending chat message to %x: amt=%v, free=%v",
+			rpcPayReq.Dest, reqAmt, rpcPayReq.ChatFree)
+	}
+
 	if len(destTLV) != 0 {
 		var err error
 		payIntent.FinalDestRecords, err = tlv.MapToRecords(destTLV)
@@ -551,14 +594,6 @@ func (r *RouterBackend) extractIntentFromSendRequest(
 		return nil, err
 	}
 	payIntent.RouteHints = routeHints
-
-	// Unmarshall either sat or msat amount from request.
-	reqAmt, err := lnrpc.UnmarshallAmt(
-		rpcPayReq.Amt, rpcPayReq.AmtMsat,
-	)
-	if err != nil {
-		return nil, err
-	}
 
 	// If the payment request field isn't blank, then the details of the
 	// invoice are encoded entirely within the encoded payReq.  So we'll

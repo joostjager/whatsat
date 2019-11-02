@@ -547,6 +547,7 @@ func newRPCServer(s *server, macService *macaroons.Service,
 		ActiveNetParams:  activeNetParams.Params,
 		Tower:            s.controlTower,
 		MaxTotalTimelock: cfg.MaxOutgoingCltvExpiry,
+		NodeSigner:       s.nodeSigner,
 	}
 
 	var (
