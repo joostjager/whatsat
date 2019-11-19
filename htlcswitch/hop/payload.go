@@ -79,6 +79,9 @@ func (e ErrInvalidPayload) Error() string {
 		hopType, e.Violation, e.Type)
 }
 
+// CustomRecordSet stores a set of custom key/value pairs.
+type CustomRecordSet map[uint64][]byte
+
 // Payload encapsulates all information delivered to a hop in an onion payload.
 // A Hop can represent either a TLV or legacy payload. The primary forwarding
 // instruction can be accessed via ForwardingInfo, and additional records can be
@@ -91,6 +94,10 @@ type Payload struct {
 	// MPP holds the info provided in an option_mpp record when parsed from
 	// a TLV onion payload.
 	MPP *record.MPP
+
+	// customRecords are user-defined records in the custom type range that
+	// were included in the payload.
+	customRecords CustomRecordSet
 }
 
 // NewLegacyPayload builds a Payload from the amount, cltv, and next hop
@@ -105,6 +112,7 @@ func NewLegacyPayload(f *sphinx.HopData) *Payload {
 			AmountToForward: lnwire.MilliSatoshi(f.ForwardAmount),
 			OutgoingCTLV:    f.OutgoingCltv,
 		},
+		customRecords: make(CustomRecordSet),
 	}
 }
 
@@ -112,10 +120,11 @@ func NewLegacyPayload(f *sphinx.HopData) *Payload {
 // should correspond to the bytes encapsulated in a TLV onion payload.
 func NewPayloadFromReader(r io.Reader) (*Payload, error) {
 	var (
-		cid  uint64
-		amt  uint64
-		cltv uint32
-		mpp  = &record.MPP{}
+		cid           uint64
+		amt           uint64
+		cltv          uint32
+		mpp           = &record.MPP{}
+		customRecords = make(CustomRecordSet)
 	)
 
 	tlvStream, err := tlv.NewStream(
@@ -157,6 +166,13 @@ func NewPayloadFromReader(r io.Reader) (*Payload, error) {
 		mpp = nil
 	}
 
+	for t, parseResult := range parsedTypes {
+		if parseResult == nil || t < CustomTypeStart {
+			continue
+		}
+		customRecords[uint64(t)] = parseResult
+	}
+
 	return &Payload{
 		FwdInfo: ForwardingInfo{
 			Network:         BitcoinNetwork,
@@ -164,7 +180,8 @@ func NewPayloadFromReader(r io.Reader) (*Payload, error) {
 			AmountToForward: lnwire.MilliSatoshi(amt),
 			OutgoingCTLV:    cltv,
 		},
-		MPP: mpp,
+		MPP:           mpp,
+		customRecords: customRecords,
 	}, nil
 }
 
@@ -232,6 +249,12 @@ func ValidateParsedPayloadTypes(parsedTypes tlv.TypeMap,
 // onion payload.
 func (h *Payload) MultiPath() *record.MPP {
 	return h.MPP
+}
+
+// CustomRecords returns the custom tlv type records that were parsed from the
+// payload.
+func (h *Payload) CustomRecords() CustomRecordSet {
+	return h.customRecords
 }
 
 // getMinRequiredViolation checks for unrecognized required (even) fields in the
