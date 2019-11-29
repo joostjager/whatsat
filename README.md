@@ -13,7 +13,7 @@ It is currently also possible to chat over Lightning without paying anything at 
 
 ## Usage
 
-* Set up a Lightning Node as usual and open a channel to a well-connected node. Also make sure you have inbound liquidity too, otherwise it won't be possible to receive messages.
+* Set up a Lightning Node as usual and open a channel to a well-connected node. Also make sure you have inbound liquidity too, otherwise it won't be possible to receive messages. And use public channels, otherwise people won't be able to find routes to deliver messages to you. No support for routing hints yet.
 
 * Run `lncli chat <pubkey_or_alias>` to start chatting with your chosen destination.
 
