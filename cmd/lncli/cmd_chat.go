@@ -36,11 +36,21 @@ var chatCommand = cli.Command{
 	},
 }
 
+type messageState uint8
+
+const (
+	statePending messageState = iota
+
+	stateDelivered
+
+	stateFailed
+)
+
 type chatLine struct {
-	text      string
-	sender    route.Vertex
-	delivered bool
-	fee       uint64
+	text   string
+	sender route.Vertex
+	state  messageState
+	fee    uint64
 }
 
 var (
@@ -114,6 +124,8 @@ func setDest(destStr string) {
 }
 
 func chat(ctx *cli.Context) error {
+	fmt.Println("\x07")
+
 	free := ctx.Bool("free")
 	chatMsgAmt := int64(ctx.Uint64("amt_msat"))
 
@@ -233,13 +245,15 @@ func chat(ctx *cli.Context) error {
 					fallthrough
 
 				case routerrpc.PaymentState_FAILED_INCORRECT_PAYMENT_DETAILS:
-					msgLines[msgIdx].delivered = true
+					msgLines[msgIdx].state = stateDelivered
 					updateView(g)
 					break
 
 				case routerrpc.PaymentState_IN_FLIGHT:
 
 				default:
+					msgLines[msgIdx].state = stateFailed
+					updateView(g)
 					break
 				}
 			}
@@ -341,21 +355,25 @@ func updateView(g *gocui.Gui) {
 			text := line.text
 
 			var amtDisplay string
-			if line.delivered {
+			if line.state == stateDelivered {
 				amtDisplay = formatMsat(line.fee)
 			}
 
 			maxTextFieldLen := cols - len(amtDisplay) - 20
 			maxTextLen := maxTextFieldLen
-			if line.delivered {
+			if line.state != statePending {
 				maxTextLen -= 2
 			}
 			if len(text) > maxTextLen {
 				text = text[:maxTextLen-3] + "..."
 			}
 			paddingLen := maxTextFieldLen - len(text)
-			if line.delivered {
+			switch line.state {
+			case stateDelivered:
 				text += " \x1b[34m✔️\x1b[0m"
+				paddingLen -= 2
+			case stateFailed:
+				text += " \x1b[31m✘\x1b[0m"
 				paddingLen -= 2
 			}
 
