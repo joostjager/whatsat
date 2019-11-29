@@ -6,7 +6,9 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"strings"
+	"time"
 
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/routing/route"
@@ -32,6 +34,10 @@ var chatCommand = cli.Command{
 			Name:  "amt_msat",
 			Usage: "payment amount per chat message",
 			Value: 1000,
+		},
+		cli.StringFlag{
+			Name:  "log",
+			Usage: "file to log chat traffic to",
 		},
 	},
 }
@@ -62,6 +68,8 @@ var (
 	aliasToKey = make(map[string]route.Vertex)
 
 	self route.Vertex
+
+	logFile string
 )
 
 func initAliasMaps(conn *grpc.ClientConn) error {
@@ -128,6 +136,7 @@ func chat(ctx *cli.Context) error {
 
 	free := ctx.Bool("free")
 	chatMsgAmt := int64(ctx.Uint64("amt_msat"))
+	logFile = ctx.String("log")
 
 	conn := getClientConn(ctx, false)
 	defer conn.Close()
@@ -200,6 +209,8 @@ func chat(ctx *cli.Context) error {
 		if destination == nil {
 			return nil
 		}
+
+		logMsg(self, newMsg)
 
 		msgIdx := addMsg(chatLine{
 			sender: self,
@@ -281,6 +292,8 @@ func chat(ctx *cli.Context) error {
 			if destination == nil {
 				destination = &sender
 			}
+
+			logMsg(sender, chatMsg.Text)
 
 			addMsg(chatLine{
 				sender: sender,
@@ -389,6 +402,26 @@ func updateView(g *gocui.Gui) {
 
 		return nil
 	})
+}
+
+func logMsg(sender route.Vertex, msg string) {
+	if logFile == "" {
+		return
+	}
+
+	text := fmt.Sprintf("%v %-16v %v\n",
+		time.Now().Format("2006-01-02 15:04:05.000000"), keyToAlias[sender], msg)
+
+	f, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		panic(err)
+	}
+
+	defer f.Close()
+
+	if _, err = f.WriteString(text); err != nil {
+		panic(err)
+	}
 }
 
 func formatMsat(msat uint64) string {
