@@ -53,10 +53,11 @@ const (
 )
 
 type chatLine struct {
-	text   string
-	sender route.Vertex
-	state  messageState
-	fee    uint64
+	text      string
+	sender    route.Vertex
+	recipient *route.Vertex
+	state     messageState
+	fee       uint64
 }
 
 var (
@@ -212,9 +213,11 @@ func chat(ctx *cli.Context) error {
 
 		logMsg(self, newMsg)
 
+		d := *destination
 		msgIdx := addMsg(chatLine{
-			sender: self,
-			text:   newMsg,
+			sender:    self,
+			text:      newMsg,
+			recipient: &d,
 		})
 
 		payAmt := runningBalance[*destination]
@@ -366,6 +369,10 @@ func updateView(g *gocui.Gui) {
 
 		for _, line := range msgLines[startLine:] {
 			text := line.text
+			if line.recipient != nil {
+				r := keyToAlias[*line.recipient]
+				text += fmt.Sprintf(" \x1b[34m(%v)\x1b[0m", r)
+			}
 
 			var amtDisplay string
 			if line.state == stateDelivered {
