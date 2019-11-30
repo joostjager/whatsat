@@ -12,5 +12,6 @@ func routerCommands() []cli.Command {
 		resetMissionControlCommand,
 		buildRouteCommand,
 		chatCommand,
+		chatPeersCommand,
 	}
 }
