@@ -337,6 +337,9 @@ func quit(g *gocui.Gui, v *gocui.View) error {
 }
 
 func updateView(g *gocui.Gui) {
+	const (
+		maxSenderLen = 16
+	)
 
 	sendView, _ := g.View("send")
 	if destination == nil {
@@ -369,7 +372,7 @@ func updateView(g *gocui.Gui) {
 				amtDisplay = formatMsat(line.fee)
 			}
 
-			maxTextFieldLen := cols - len(amtDisplay) - 20
+			maxTextFieldLen := cols - len(amtDisplay) - maxSenderLen + 5
 			maxTextLen := maxTextFieldLen
 			if line.state != statePending {
 				maxTextLen -= 2
@@ -390,8 +393,8 @@ func updateView(g *gocui.Gui) {
 			text += strings.Repeat(" ", paddingLen)
 
 			senderAlias := keyToAlias[line.sender]
-			if len(senderAlias) > 16 {
-				senderAlias = senderAlias[:16]
+			if len(senderAlias) > maxSenderLen {
+				senderAlias = senderAlias[:maxSenderLen]
 			}
 			fmt.Fprintf(messagesView, "%16v: %v \x1b[34m%v\x1b[0m",
 				senderAlias,
