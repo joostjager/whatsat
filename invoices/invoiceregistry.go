@@ -486,7 +486,9 @@ func (i *InvoiceRegistry) processChat(hash lntypes.Hash,
 		return nil
 	}
 
-	log.Infof("Chat message received from %v", sender)
+	free := preimage == nil
+	log.Infof("CHAT message received: sender=%v, amt=%v, free=%v, msg=%v",
+		sender, amtPaid, free, string(chatMsg.Text))
 
 	return preimage
 }

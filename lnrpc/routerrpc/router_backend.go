@@ -571,8 +571,8 @@ func (r *RouterBackend) extractIntentFromSendRequest(
 			destTLV[34349337] = preimage[:]
 		}
 
-		log.Infof("Sending chat message to %x: amt=%v, free=%v",
-			rpcPayReq.Dest, reqAmt, rpcPayReq.ChatFree)
+		log.Infof("CHAT message sent: recipient=%x, amt=%v, free=%v, msg=%v",
+			rpcPayReq.Dest, reqAmt, rpcPayReq.ChatFree, msg)
 	}
 
 	if len(destTLV) != 0 {
