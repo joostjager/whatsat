@@ -378,6 +378,9 @@ func newServer(listenAddrs []net.Addr, chanDB *channeldb.DB,
 		return nil, err
 	}
 
+	// Initialize invoices package simple push key
+	invoices.SimplePushKey = cfg.SimplePushKey
+
 	s := &server{
 		chanDB:         chanDB,
 		cc:             cc,

@@ -336,6 +336,8 @@ type config struct {
 	Watchtower *lncfg.Watchtower `group:"watchtower" namespace:"watchtower"`
 
 	LegacyProtocol *lncfg.LegacyProtocol `group:"legacyprotocol" namespace:"legacyprotocol"`
+
+	SimplePushKey string `long:"simplepushkey" description:"API key to use for simplepush.io notifications"`
 }
 
 // loadConfig initializes and parses the config using a config file and command

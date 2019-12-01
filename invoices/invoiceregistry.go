@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 
 	"github.com/lightningnetwork/lnd/htlcswitch/hop"
+	"github.com/simplepush/simplepush-go"
 
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
@@ -33,6 +34,8 @@ var (
 
 	// errNoUpdate is returned when no invoice updated is required.
 	errNoUpdate = errors.New("no update needed")
+
+	SimplePushKey string
 )
 
 var signedMsgPrefix = []byte("Lightning Signed Message:")
@@ -486,9 +489,28 @@ func (i *InvoiceRegistry) processChat(hash lntypes.Hash,
 		return nil
 	}
 
+	senderAlias := "unknown"
+	node, err := i.cdb.ChannelGraph().FetchLightningNode(pubKey)
+	if err == nil {
+		senderAlias = node.Alias
+	} else {
+		log.Errorf("Chat sender alias lookup: %v", err)
+	}
+
 	free := preimage == nil
-	log.Infof("CHAT message received: sender=%v, amt=%v, free=%v, msg=%v",
-		sender, amtPaid, free, string(chatMsg.Text))
+	log.Infof("CHAT message received: sender=%v (%v), amt=%v, free=%v, msg=%v",
+		sender, senderAlias, amtPaid, free, string(chatMsg.Text))
+
+	err = simplepush.Send(
+		simplepush.Message{
+			SimplePushKey: SimplePushKey,
+			Title:         senderAlias,
+			Message:       string(chatMsg.Text),
+		},
+	)
+	if err != nil {
+		log.Errorf("SimplePush: %v", err)
+	}
 
 	return preimage
 }

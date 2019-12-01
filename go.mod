@@ -45,6 +45,7 @@ require (
 	github.com/nsf/termbox-go v0.0.0-20190817171036-93860e161317 // indirect
 	github.com/prometheus/client_golang v0.9.3
 	github.com/rogpeppe/fastuuid v1.2.0 // indirect
+	github.com/simplepush/simplepush-go v0.0.0-20170307205831-8980e96b7b02
 	github.com/tv42/zbase32 v0.0.0-20160707012821-501572607d02
 	github.com/urfave/cli v1.18.0
 	golang.org/x/crypto v0.0.0-20190211182817-74369b46fc67
