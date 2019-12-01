@@ -23,6 +23,22 @@ It is currently also possible to chat over Lightning without paying anything at 
 
   All chat messages end up in the same window. It is possible to switch to sending to a different destination by typing `/<pubkey_or_alias>` in the send box.
 
+## Tuning LND for chat traffic
+
+There are several configuration parameters that can be changed to optimize `lnd` for chat traffic:
+
+* `bitcoin.minhtlc=0`
+
+  When new channels are opened (or accepted), this parameter configures the minimum htlc size that you will ever be able to receive on that channel. This value cannot be changed after the channel is opened. Setting this to zero allows us to receive chat messages that pay us only 1 millisatoshi (a lot less than the default of 1000 msat).
+
+* `routerrpc.attemptcost=0`
+
+  Prevents us from paying more for a reliable route. The default for this is 100 sats per attempt. For very low value (chat) payments, this means that we are going to overpay a lot on fees (relative to the payment amount) for a reliable route. Click [here](https://twitter.com/joostjgr/status/1186177262238031872) more information on this topic.
+
+## Notifications
+
+This fork of `lnd` includes phone push notifications through [simplepush.io](https://simplepush.io/). It delivers a notification any time a chat message comes in. To enable this functionality, set your api key through the `simplepushkey` configuration option.
+
 ## Disclaimer
 
-This code only serves to demonstrate the concept and doesn't pass the required quality checks. Use with testnet sats only.
+This code only serves to demonstrate the concept and doesn't pass the required quality checks. Use with testnet sats only. If you really want to use it on mainnet, set up a dedicated node with a negligible amount of money on it and a few minimum sized channels.
