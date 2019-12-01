@@ -389,8 +389,12 @@ func updateView(g *gocui.Gui) {
 
 			text += strings.Repeat(" ", paddingLen)
 
+			senderAlias := keyToAlias[line.sender]
+			if len(senderAlias) > 16 {
+				senderAlias = senderAlias[:16]
+			}
 			fmt.Fprintf(messagesView, "%16v: %v \x1b[34m%v\x1b[0m",
-				keyToAlias[line.sender],
+				senderAlias,
 				text, amtDisplay,
 			)
 
