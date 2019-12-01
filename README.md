@@ -35,6 +35,10 @@ There are several configuration parameters that can be changed to optimize `lnd`
 
   Prevents us from paying more for a reliable route. The default for this is 100 sats per attempt. For very low value (chat) payments, this means that we are going to overpay a lot on fees (relative to the payment amount) for a reliable route. Click [here](https://twitter.com/joostjgr/status/1186177262238031872) more information on this topic.
 
+## Finding peers that are good for chatting
+
+For chat messages, the main peer selection criterium is the routing fee that you need to pay for the smallest possible payment amount. This fork adds a command to lncli to calculate that fee for all nodes on the ["bos list"](https://nodes.lightning.computer/availability/v1/btc.json). Run `lncli chatpeers` and check out the top of the list.
+
 ## Notifications
 
 This fork of `lnd` includes phone push notifications through [simplepush.io](https://simplepush.io/). It delivers a notification any time a chat message comes in. To enable this functionality, set your api key through the `simplepushkey` configuration option.
