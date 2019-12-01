@@ -224,6 +224,9 @@ func chat(ctx *cli.Context) error {
 		if payAmt < chatMsgAmt {
 			payAmt = chatMsgAmt
 		}
+		if payAmt > 10*chatMsgAmt {
+			payAmt = 10 * chatMsgAmt
+		}
 
 		req := routerrpc.SendPaymentRequest{
 			ChatMessage:    newMsg,
