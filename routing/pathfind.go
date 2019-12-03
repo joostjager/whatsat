@@ -54,7 +54,7 @@ var (
 	// units of executing a payment attempt that fails. It is used to trade
 	// off potentially better routes against their probability of
 	// succeeding.
-	DefaultPaymentAttemptPenalty = lnwire.NewMSatFromSatoshis(100)
+	DefaultPaymentAttemptPenalty = lnwire.NewMSatFromSatoshis(0)
 
 	// DefaultMinRouteProbability is the default minimum probability for routes
 	// returned from findPath.
