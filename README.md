@@ -48,6 +48,19 @@ There are configuration parameters that can be changed to optimize `lnd` for cha
 
 For chat messages, the main peer selection criterium is the routing fee that you need to pay for the smallest possible payment amount. Run `whatsat chatpeers` to calculate that fee for all nodes on the ["bos list"](https://nodes.lightning.computer/availability/v1/btc.json). Nodes at the top of list are most interesting.
 
+## Protocol
+
+Whatsat messages are sent as custom records attached to the payment. The record identifiers that are currently in use are:
+
+record identifier | content
+--- | ---
+5482373484 | key send preimage
+34349334 | chat message
+34349337 | signature(sender \| recipient \| timestamp \| msg) in Bitcoin ECDSA DER format.
+34349339 | sender pubkey
+34349343 | timestamp in nano seconds since unix epoch
+
+
 ## Disclaimer
 
 This code only serves to demonstrate the concept and doesn't pass the required quality checks. Use with testnet sats only. If you really want to use it on mainnet, set up a dedicated node with a negligible amount of money on it and a few minimum sized channels.
