@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strings"
 
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/urfave/cli"
@@ -20,7 +21,9 @@ var chatPeersCommand = cli.Command{
 }
 
 func chatPeers(ctx *cli.Context) error {
-	bosNodes, err := getBosNodes()
+	network := strings.ToLower(ctx.GlobalString("network"))
+
+	bosNodes, err := getBosNodes(network)
 	if err != nil {
 		return err
 	}
@@ -108,8 +111,16 @@ type BosList struct {
 	Scores []*BosScore
 }
 
-func getBosNodes() (map[string]string, error) {
-	const url = "https://nodes.lightning.computer/availability/v1/btc.json"
+func getBosNodes(network string) (map[string]string, error) {
+	var url string
+	switch network {
+	case "mainnet":
+		url = "https://nodes.lightning.computer/availability/v1/btc.json"
+	case "testnet":
+		url = "https://nodes.lightning.computer/availability/v1/btctestnet.json"
+	default:
+		return nil, fmt.Errorf("no bos list for network %v", network)
+	}
 
 	resp, err := http.Get(url)
 	if err != nil {
