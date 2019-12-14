@@ -15,9 +15,13 @@ A [previous version](https://github.com/joostjager/whatsat/tree/forked-lnd) of W
 
 ## Usage
 
-* Install `lnd` from the [key send](https://github.com/lightningnetwork/lnd/pull/3795) branch. After this branch has been merged, Whatsat can run off of the master branch. Set up the node as usual and open a channel to a well-connected node. Also make sure you have inbound liquidity too, otherwise it won't be possible to receive messages. And use public channels, otherwise people won't be able to find routes to deliver messages to you. No support for routing hints yet.
+* Fetch `lnd` from the [key send](https://github.com/lightningnetwork/lnd/pull/3795) branch. (After this branch has been merged, Whatsat can run off of the master branch.)
+
+* Build `lnd` with the router and signer sub-servers: `make tags="signrpc routerrpc"`.
 
 * Run `lnd` with `--accept-key-send` to be able to accept chat messages.
+
+* Set up the node as usual and open a channel to a well-connected node. Also make sure you have inbound liquidity too, otherwise it won't be possible to receive messages. And use public channels, otherwise people won't be able to find routes to deliver messages to you. No support for routing hints yet.
 
 * Build whatsat: `go build`
 
