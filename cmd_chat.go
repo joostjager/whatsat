@@ -1,15 +1,18 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
+	"encoding/binary"
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
+	"github.com/lightningnetwork/lnd/keychain"
 	"github.com/lightningnetwork/lnd/lntypes"
 	"github.com/lightningnetwork/lnd/record"
-	"github.com/tv42/zbase32"
 
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/routing/route"
@@ -17,6 +20,7 @@ import (
 
 	"github.com/jroimartin/gocui"
 	"github.com/lightningnetwork/lnd/lnrpc/routerrpc"
+	"github.com/lightningnetwork/lnd/lnrpc/signrpc"
 	"github.com/urfave/cli"
 )
 
@@ -35,9 +39,13 @@ var chatCommand = cli.Command{
 	},
 }
 
+var byteOrder = binary.BigEndian
+
 const (
-	tlvMsgRecord = 34349334
-	tlvSigRecord = 34349336
+	tlvMsgRecord    = 34349334
+	tlvSigRecord    = 34349337
+	tlvSenderRecord = 34349339
+	tlvTimeRecord   = 34349343
 )
 
 type messageState uint8
@@ -56,6 +64,7 @@ type chatLine struct {
 	recipient *route.Vertex
 	state     messageState
 	fee       uint64
+	timestamp time.Time
 }
 
 var (
@@ -146,6 +155,7 @@ func chat(ctx *cli.Context) error {
 
 	mainRpc := lnrpc.NewLightningClient(conn)
 	client := routerrpc.NewRouterClient(conn)
+	signClient := signrpc.NewSignerClient(conn)
 
 	req := &lnrpc.InvoiceSubscription{}
 	rpcCtx := context.Background()
@@ -225,21 +235,37 @@ func chat(ctx *cli.Context) error {
 		}
 		hash := preimage.Hash()
 
-		signResp, err := mainRpc.SignMessage(context.Background(), &lnrpc.SignMessageRequest{
-			Msg: []byte(newMsg),
-		})
-		if err != nil {
-			return err
-		}
-		signature, err := zbase32.DecodeString(signResp.Signature)
+		// Message sending time stamp
+		timestamp := time.Now().UnixNano()
+		var timeBuffer [8]byte
+		byteOrder.PutUint64(timeBuffer[:], uint64(timestamp))
+
+		// Sign all data.
+		signData, err := getSignData(
+			self, *destination, timeBuffer[:], []byte(newMsg),
+		)
 		if err != nil {
 			return err
 		}
 
+		signResp, err := signClient.SignMessage(context.Background(), &signrpc.SignMessageReq{
+			Msg: signData,
+			KeyLoc: &signrpc.KeyLocator{
+				KeyFamily: int32(keychain.KeyFamilyNodeKey),
+				KeyIndex:  0,
+			},
+		})
+		if err != nil {
+			return err
+		}
+		signature := signResp.Signature
+
 		customRecords := map[uint64][]byte{
-			tlvMsgRecord:   []byte(newMsg),
-			tlvSigRecord:   signature,
-			record.KeySend: preimage[:],
+			tlvMsgRecord:    []byte(newMsg),
+			tlvSenderRecord: self[:],
+			tlvTimeRecord:   timeBuffer[:],
+			tlvSigRecord:    signature,
+			record.KeySend:  preimage[:],
 		}
 
 		req := routerrpc.SendPaymentRequest{
@@ -334,12 +360,38 @@ func chat(ctx *cli.Context) error {
 				continue
 			}
 
-			encodedSignature := zbase32.EncodeToString(signature)
+			timestampBytes, ok := customRecords[tlvTimeRecord]
+			if !ok {
+				continue
+			}
+			timestamp := time.Unix(
+				0,
+				int64(byteOrder.Uint64(timestampBytes)),
+			)
 
-			verifyResp, err := mainRpc.VerifyMessage(context.Background(), &lnrpc.VerifyMessageRequest{
-				Msg:       msg,
-				Signature: encodedSignature,
-			})
+			senderBytes, ok := customRecords[tlvSenderRecord]
+			if !ok {
+				continue
+			}
+			sender, err := route.NewVertexFromBytes(senderBytes)
+			if err != nil {
+				returnErr(err)
+				return
+			}
+
+			signData, err := getSignData(sender, self, timestampBytes, msg)
+			if err != nil {
+				returnErr(err)
+				return
+			}
+
+			verifyResp, err := signClient.VerifyMessage(
+				context.Background(),
+				&signrpc.VerifyMessageReq{
+					Msg:       signData,
+					Signature: signature,
+					Pubkey:    sender[:],
+				})
 			if err != nil {
 				returnErr(err)
 				return
@@ -349,19 +401,14 @@ func chat(ctx *cli.Context) error {
 				continue
 			}
 
-			sender, err := route.NewVertexFromStr(verifyResp.Pubkey)
-			if err != nil {
-				returnErr(err)
-				return
-			}
-
 			if destination == nil {
 				destination = &sender
 			}
 
 			addMsg(chatLine{
-				sender: sender,
-				text:   string(msg),
+				sender:    sender,
+				text:      string(msg),
+				timestamp: timestamp,
 			})
 
 			amt := invoice.AmtPaid
@@ -434,10 +481,15 @@ func updateView(g *gocui.Gui) {
 
 		for _, line := range msgLines[startLine:] {
 			text := line.text
+			var r string
 			if line.recipient != nil {
-				r := keyToAlias[*line.recipient]
-				text += fmt.Sprintf(" \x1b[34m(%v)\x1b[0m", r)
+				r = keyToAlias[*line.recipient]
+			} else {
+				r = fmt.Sprintf("sent: %v",
+					line.timestamp.Format(time.ANSIC))
 			}
+
+			text += fmt.Sprintf(" \x1b[34m(%v)\x1b[0m", r)
 
 			var amtDisplay string
 			if line.state == stateDelivered {
@@ -491,4 +543,30 @@ func formatMsat(msat uint64) string {
 	return fmt.Sprintf("[%d%-4s sat]",
 		wholeSats, msatsStr,
 	)
+}
+
+func getSignData(sender, recipient route.Vertex, timestamp []byte, msg []byte) ([]byte, error) {
+	var signData bytes.Buffer
+
+	// Write sender.
+	if _, err := signData.Write(sender[:]); err != nil {
+		return nil, err
+	}
+
+	// Write recipient.
+	if _, err := signData.Write(recipient[:]); err != nil {
+		return nil, err
+	}
+
+	// Write time.
+	if _, err := signData.Write(timestamp); err != nil {
+		return nil, err
+	}
+
+	// Write message.
+	if _, err := signData.Write(msg); err != nil {
+		return nil, err
+	}
+
+	return signData.Bytes(), nil
 }
