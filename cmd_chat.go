@@ -178,9 +178,6 @@ func chat(ctx *cli.Context) error {
 
 	addMsg := func(line chatLine) int {
 		msgLines = append(msgLines, line)
-
-		updateView(g)
-
 		return len(msgLines) - 1
 	}
 
@@ -190,16 +187,13 @@ func chat(ctx *cli.Context) error {
 		}
 		newMsg := v.BufferLines()[0]
 
-		g.Update(func(g *gocui.Gui) error {
-			v.Clear()
-			if err := v.SetCursor(0, 0); err != nil {
-				return err
-			}
-			if err := v.SetOrigin(0, 0); err != nil {
-				return err
-			}
-			return nil
-		})
+		v.Clear()
+		if err := v.SetCursor(0, 0); err != nil {
+			return err
+		}
+		if err := v.SetOrigin(0, 0); err != nil {
+			return err
+		}
 
 		if newMsg[0] == '/' {
 			destHex := newMsg[1:]
@@ -220,6 +214,11 @@ func chat(ctx *cli.Context) error {
 			text:      newMsg,
 			recipient: &d,
 		})
+
+		err := updateView(g)
+		if err != nil {
+			return err
+		}
 
 		payAmt := runningBalance[*destination]
 		if payAmt < chatMsgAmt {
@@ -300,14 +299,14 @@ func chat(ctx *cli.Context) error {
 					msgLines[msgIdx].fee = uint64(status.Route.TotalFeesMsat)
 					runningBalance[*destination] -= payAmt
 					msgLines[msgIdx].state = stateDelivered
-					updateView(g)
+					g.Update(updateView)
 					break
 
 				case routerrpc.PaymentState_IN_FLIGHT:
 
 				default:
 					msgLines[msgIdx].state = stateFailed
-					updateView(g)
+					g.Update(updateView)
 					break
 				}
 			}
@@ -410,6 +409,7 @@ func chat(ctx *cli.Context) error {
 				text:      string(msg),
 				timestamp: timestamp,
 			})
+			g.Update(updateView)
 
 			amt := invoice.AmtPaid
 			runningBalance[*destination] += amt
@@ -455,7 +455,7 @@ func quit(g *gocui.Gui, v *gocui.View) error {
 	return gocui.ErrQuit
 }
 
-func updateView(g *gocui.Gui) {
+func updateView(g *gocui.Gui) error {
 	const (
 		maxSenderLen = 16
 	)
@@ -470,66 +470,64 @@ func updateView(g *gocui.Gui) {
 	}
 
 	messagesView, _ := g.View("messages")
-	g.Update(func(g *gocui.Gui) error {
-		messagesView.Clear()
-		cols, rows := messagesView.Size()
 
-		startLine := len(msgLines) - rows
-		if startLine < 0 {
-			startLine = 0
+	messagesView.Clear()
+	cols, rows := messagesView.Size()
+
+	startLine := len(msgLines) - rows
+	if startLine < 0 {
+		startLine = 0
+	}
+
+	for _, line := range msgLines[startLine:] {
+		text := line.text
+		var r string
+		if line.recipient != nil {
+			r = keyToAlias[*line.recipient]
+		} else {
+			r = fmt.Sprintf("sent: %v",
+				line.timestamp.Format(time.ANSIC))
 		}
 
-		for _, line := range msgLines[startLine:] {
-			text := line.text
-			var r string
-			if line.recipient != nil {
-				r = keyToAlias[*line.recipient]
-			} else {
-				r = fmt.Sprintf("sent: %v",
-					line.timestamp.Format(time.ANSIC))
-			}
+		text += fmt.Sprintf(" \x1b[34m(%v)\x1b[0m", r)
 
-			text += fmt.Sprintf(" \x1b[34m(%v)\x1b[0m", r)
-
-			var amtDisplay string
-			if line.state == stateDelivered {
-				amtDisplay = formatMsat(line.fee)
-			}
-
-			maxTextFieldLen := cols - len(amtDisplay) - maxSenderLen + 5
-			maxTextLen := maxTextFieldLen
-			if line.state != statePending {
-				maxTextLen -= 2
-			}
-			if len(text) > maxTextLen {
-				text = text[:maxTextLen-3] + "..."
-			}
-			paddingLen := maxTextFieldLen - len(text)
-			switch line.state {
-			case stateDelivered:
-				text += " \x1b[34m✔️\x1b[0m"
-				paddingLen -= 2
-			case stateFailed:
-				text += " \x1b[31m✘\x1b[0m"
-				paddingLen -= 2
-			}
-
-			text += strings.Repeat(" ", paddingLen)
-
-			senderAlias := keyToAlias[line.sender]
-			if len(senderAlias) > maxSenderLen {
-				senderAlias = senderAlias[:maxSenderLen]
-			}
-			fmt.Fprintf(messagesView, "%16v: %v \x1b[34m%v\x1b[0m",
-				senderAlias,
-				text, amtDisplay,
-			)
-
-			fmt.Fprintln(messagesView)
+		var amtDisplay string
+		if line.state == stateDelivered {
+			amtDisplay = formatMsat(line.fee)
 		}
 
-		return nil
-	})
+		maxTextFieldLen := cols - len(amtDisplay) - maxSenderLen + 5
+		maxTextLen := maxTextFieldLen
+		if line.state != statePending {
+			maxTextLen -= 2
+		}
+		if len(text) > maxTextLen {
+			text = text[:maxTextLen-3] + "..."
+		}
+		paddingLen := maxTextFieldLen - len(text)
+		switch line.state {
+		case stateDelivered:
+			text += " \x1b[34m✔️\x1b[0m"
+			paddingLen -= 2
+		case stateFailed:
+			text += " \x1b[31m✘\x1b[0m"
+			paddingLen -= 2
+		}
+
+		text += strings.Repeat(" ", paddingLen)
+
+		senderAlias := keyToAlias[line.sender]
+		if len(senderAlias) > maxSenderLen {
+			senderAlias = senderAlias[:maxSenderLen]
+		}
+		fmt.Fprintf(messagesView, "%16v: %v \x1b[34m%v\x1b[0m",
+			senderAlias,
+			text, amtDisplay,
+		)
+
+		fmt.Fprintln(messagesView)
+	}
+	return nil
 }
 
 func formatMsat(msat uint64) string {
