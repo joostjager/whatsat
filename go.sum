@@ -147,6 +147,8 @@ github.com/lightningnetwork/lightning-onion v0.0.0-20191214001659-f34e9dc1651d h
 github.com/lightningnetwork/lightning-onion v0.0.0-20191214001659-f34e9dc1651d/go.mod h1:rigfi6Af/KqsF7Za0hOgcyq2PNH4AN70AaMRxcJkff4=
 github.com/lightningnetwork/lnd v0.0.2 h1:actrQ68Mrj2atPV7A58FxPzP6Qjwvn0GqkxC9iC0Mlw=
 github.com/lightningnetwork/lnd v0.0.2/go.mod h1:wpCSmoRQxoM/vXLtTETeBp08XnB/9/f+sjPvCJZPyA0=
+github.com/lightningnetwork/lnd v0.8.0-beta-rc3.0.20191214035437-eae45f9ad91e h1:RDspqRRoWK5On5a3fn2P0bubylfNmI9ot1wX+loaYlw=
+github.com/lightningnetwork/lnd v0.8.0-beta-rc3.0.20191214035437-eae45f9ad91e/go.mod h1:60/zDjDYaYPmISAm3J1WWKyyt+ZiAvuET1XzglO8s70=
 github.com/lightningnetwork/lnd/cert v1.0.0 h1:J0gtf2UNQX2U+/j5cXnX2wIMSTuJuwrXv7m9qJr2wtw=
 github.com/lightningnetwork/lnd/cert v1.0.0/go.mod h1:fmtemlSMf5t4hsQmcprSoOykypAPp+9c+0d0iqTScMo=
 github.com/lightningnetwork/lnd/queue v1.0.1 h1:jzJKcTy3Nj5lQrooJ3aaw9Lau3I0IwvQR5sqtjdv2R0=

@@ -9,7 +9,7 @@ require (
 	github.com/golang/protobuf v1.3.2
 	github.com/joostjager/lnd v0.0.2 // indirect
 	github.com/jroimartin/gocui v0.4.0
-	github.com/lightningnetwork/lnd v0.8.2-beta
+	github.com/lightningnetwork/lnd v0.8.0-beta-rc3.0.20191214035437-eae45f9ad91e
 	github.com/mattn/go-runewidth v0.0.7 // indirect
 	github.com/nsf/termbox-go v0.0.0-20190817171036-93860e161317 // indirect
 	github.com/roasbeef/btcd v0.0.0-20180418012700-a03db407e40d // indirect
@@ -22,5 +22,3 @@ require (
 	google.golang.org/grpc v1.25.1
 	gopkg.in/macaroon.v2 v2.1.0
 )
-
-replace github.com/lightningnetwork/lnd => github.com/joostjager/lnd v0.7.1-beta-rc2.0.20191214093815-7023352b9751

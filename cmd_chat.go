@@ -12,7 +12,6 @@ import (
 
 	"github.com/lightningnetwork/lnd/keychain"
 	"github.com/lightningnetwork/lnd/lntypes"
-	"github.com/lightningnetwork/lnd/record"
 
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/routing/route"
@@ -46,6 +45,9 @@ const (
 	tlvSigRecord    = 34349337
 	tlvSenderRecord = 34349339
 	tlvTimeRecord   = 34349343
+
+	// TODO: Reference lnd master constant when available.
+	tlvKeySendRecord = 5482373484
 )
 
 type messageState uint8
@@ -260,11 +262,11 @@ func chat(ctx *cli.Context) error {
 		signature := signResp.Signature
 
 		customRecords := map[uint64][]byte{
-			tlvMsgRecord:    []byte(newMsg),
-			tlvSenderRecord: self[:],
-			tlvTimeRecord:   timeBuffer[:],
-			tlvSigRecord:    signature,
-			record.KeySend:  preimage[:],
+			tlvMsgRecord:     []byte(newMsg),
+			tlvSenderRecord:  self[:],
+			tlvTimeRecord:    timeBuffer[:],
+			tlvSigRecord:     signature,
+			tlvKeySendRecord: preimage[:],
 		}
 
 		req := routerrpc.SendPaymentRequest{
