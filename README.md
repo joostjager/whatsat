@@ -52,13 +52,13 @@ For chat messages, the main peer selection criterium is the routing fee that you
 
 Whatsat messages are sent as custom records attached to the payment. The record identifiers that are currently in use are:
 
-record identifier | content
---- | ---
-5482373484 | key send preimage
-34349334 | chat message
-34349337 | signature(sender \| recipient \| timestamp \| msg) in Bitcoin ECDSA DER format.
-34349339 | sender pubkey
-34349343 | timestamp in nano seconds since unix epoch
+record type | length (bytes) | value
+--- | --- | ---
+5482373484 | 32 | key send preimage
+34349334 | variable | chat message
+34349337 | ~ 71 | signature(sender \| recipient \| timestamp \| msg), DER-encoded ECDSA
+34349339 | 32 | sender pubkey
+34349343 | 8 | timestamp in nano seconds since unix epoch (big endian encoded)
 
 
 ## Disclaimer
