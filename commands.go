@@ -71,7 +71,7 @@ func actionDecorator(f func(*cli.Context) error) func(*cli.Context) error {
 					"Please unlock using 'lncli unlock', " +
 					"or set password using 'lncli create'" +
 					" if this is the first time starting " +
-					"lnd.")
+					"lnd. If the wallet is unlocked, the reason for this error may also be that lnd isn't built with the 'routerrpc' and 'signrpc' tags.")
 			}
 			return err
 		}
