@@ -376,8 +376,8 @@ func chat(ctx *cli.Context) error {
 			}
 			sender, err := route.NewVertexFromBytes(senderBytes)
 			if err != nil {
-				returnErr(err)
-				return
+				// Invalid sender pubkey
+				continue
 			}
 
 			signData, err := getSignData(sender, self, timestampBytes, msg)
