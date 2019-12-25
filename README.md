@@ -15,7 +15,7 @@ A [previous version](https://github.com/joostjager/whatsat/tree/forked-lnd) of W
 
 ## Usage
 
-* Fetch `lnd` from the [key send](https://github.com/lightningnetwork/lnd/pull/3795) branch. (After this branch has been merged, Whatsat can run off of the master branch.)
+* Fetch the `lnd` master branch. This now includes custom record sending and key send.
 
 * Build `lnd` with the router and signer sub-servers: `make tags="signrpc routerrpc"`. If you are upgrading from a previous installation, you need to regenerate `admin.macaroon` for it to include the required sign permission.
 
