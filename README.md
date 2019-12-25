@@ -57,7 +57,7 @@ record type | length (bytes) | value
 5482373484 | 32 | key send preimage
 34349334 | variable | chat message
 34349337 | ~ 71 | signature(sender \| recipient \| timestamp \| msg), DER-encoded ECDSA
-34349339 | 32 | sender pubkey
+34349339 | 33 | sender pubkey
 34349343 | 8 | timestamp in nano seconds since unix epoch (big endian encoded)
 
 
